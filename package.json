@@ -1,0 +1,39 @@
+{
+  "name": "agentplan",
+  "version": "0.1.0",
+  "description": "Terraform Plan for AI agents.",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.6.0",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "build:examples": "node scripts/build-examples.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b tsconfig.json --pretty false",
+    "lint": "tsc -b tsconfig.json --pretty false",
+    "format:check": "node scripts/check-format.mjs",
+    "check:docs": "node scripts/check-docs.mjs",
+    "check:examples": "pnpm build && pnpm build:examples",
+    "ci": "pnpm format:check && pnpm check:docs && pnpm typecheck && pnpm test && pnpm build && pnpm build:examples",
+    "agentplan": "node apps/cli/dist/index.js",
+    "dashboard": "node apps/dashboard/dist/index.js"
+  },
+  "bin": {
+    "agentplan": "apps/cli/dist/index.js"
+  },
+  "dependencies": {
+    "@agentplan/cli": "workspace:*",
+    "@agentplan/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@vitest/coverage-v8": "4.1.10",
+    "tsx": "4.23.6",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
+  }
+}

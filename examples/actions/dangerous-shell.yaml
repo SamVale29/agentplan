@@ -1,0 +1,21 @@
+agent: cli-action-shell-agent
+actions:
+  - type: shell.execute
+    title: Attempt destructive command
+    source:
+      adapter: generic-tool
+      agent: cli-action-shell-agent
+      tool: run_command
+    resource:
+      kind: command
+      identifier: rm -rf ./data
+    input:
+      argv:
+        - rm
+        - -rf
+        - ./data
+    effects:
+      - Delete a directory recursively
+    permissions:
+      - shell.execute
+    reversible: false

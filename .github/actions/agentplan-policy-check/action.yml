@@ -1,0 +1,19 @@
+name: AgentPlan Policy Check
+description: Validate AgentPlan configuration and policy decisions in a pull request
+inputs:
+  config:
+    description: Path to the AgentPlan configuration
+    required: false
+    default: agentplan.yaml
+runs:
+  using: composite
+  steps:
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+    - name: Build AgentPlan
+      shell: bash
+      run: pnpm build
+    - name: Check configuration
+      shell: bash
+      run: pnpm exec agentplan doctor --config "${{ inputs.config }}" --json

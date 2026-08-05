@@ -1,0 +1,39 @@
+name: Feature request
+description: Propose an improvement to planning, authorization or audit
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or security problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Describe the smallest useful behavior and its policy boundary.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: What alternatives or workarounds have you considered?
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - core
+        - policy
+        - risk
+        - cli
+        - adapter
+        - dashboard
+        - documentation
+    validations:
+      required: true

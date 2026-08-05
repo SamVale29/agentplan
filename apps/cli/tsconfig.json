@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "composite": true
+  },
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../../packages/core" },
+    { "path": "../../packages/adapter-filesystem" },
+    { "path": "../../packages/adapter-shell" },
+    { "path": "../../packages/adapter-http" },
+    { "path": "../dashboard" }
+  ]
+}

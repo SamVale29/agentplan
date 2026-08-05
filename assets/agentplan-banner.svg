@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+  <title id="title">AgentPlan technical action plan</title>
+  <desc id="desc">A diagram showing inspect, plan, review, approve, apply and audit.</desc>
+  <defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#182238"/><stop offset="1" stop-color="#10141f"/></linearGradient></defs>
+  <rect width="1200" height="320" rx="28" fill="url(#g)"/>
+  <text x="70" y="72" fill="#e8edf7" font-family="Arial, sans-serif" font-size="38" font-weight="700">Know what your agent will do before it does it.</text>
+  <text x="72" y="112" fill="#96a2bb" font-family="Arial, sans-serif" font-size="20">inspect → plan → review → approve → apply → audit</text>
+  <g font-family="Arial, sans-serif" font-size="20" text-anchor="middle">
+    <g fill="#8ec5ff"><circle cx="130" cy="210" r="39"/><circle cx="330" cy="210" r="39"/><circle cx="530" cy="210" r="39"/></g>
+    <g fill="#ffcf70"><circle cx="730" cy="210" r="39"/><circle cx="930" cy="210" r="39"/></g>
+    <circle cx="1090" cy="210" r="39" fill="#b7e5ca"/>
+    <g fill="#10141f"><text x="130" y="217">inspect</text><text x="330" y="217">plan</text><text x="530" y="217">review</text><text x="730" y="217">approve</text><text x="930" y="217">apply</text><text x="1090" y="217">audit</text></g>
+  </g>
+  <g stroke="#52617c" stroke-width="4" stroke-linecap="round"><path d="M172 210h116M372 210h116M572 210h116M772 210h116M972 210h76"/></g>
+</svg>

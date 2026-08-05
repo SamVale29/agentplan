@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">AgentPlan icon</title>
+  <desc id="desc">A shield and checklist icon for AgentPlan.</desc>
+  <rect width="128" height="128" rx="24" fill="#10141f"/>
+  <path d="M64 12 105 28v33c0 25-16 38-41 50C39 99 23 86 23 61V28L64 12Z" fill="#192237" stroke="#8ec5ff" stroke-width="5"/>
+  <path d="m43 61 13 13 29-32" fill="none" stroke="#b7e5ca" stroke-linecap="round" stroke-linejoin="round" stroke-width="8"/>
+  <path d="M39 37h50M39 92h24" stroke="#ffcf70" stroke-linecap="round" stroke-width="5"/>
+</svg>

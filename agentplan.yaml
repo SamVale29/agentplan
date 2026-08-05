@@ -1,0 +1,82 @@
+version: "1"
+
+project:
+  name: agentplan
+  environment: development
+
+defaults:
+  decision: deny
+  requireApprovalFrom: medium
+  preApproveLowRisk: true
+
+workspace:
+  root: .
+  allowRead:
+    - ./README.md
+    - ./README.pt-BR.md
+    - ./package.json
+    - ./examples/**
+    - ./docs/**
+  allowWrite:
+    - ./examples/file-agent/data/**
+    - ./.agentplan/**
+  deny:
+    - ./.env
+    - ./.env.*
+    - ./secrets/**
+    - ./.git/**
+
+shell:
+  allow:
+    - node --version
+    - pnpm test
+    - pnpm build
+  requireApproval:
+    - pnpm install *
+    - npm install *
+    - git commit *
+  deny:
+    - rm -rf *
+    - rmdir /s *
+    - sudo *
+    - curl * | sh
+    - wget * | sh
+
+network:
+  allowHosts:
+    - api.openai.com
+    - api.anthropic.com
+  denyPrivateNetworks: true
+  requireApprovalForUnknownHosts: true
+
+mcp:
+  invoke: require-approval
+
+database:
+  read: allow
+  write: require-approval
+  schema: deny
+  production:
+    write: deny
+
+git:
+  commit: require-approval
+  push: deny
+  forcePush: deny
+
+financial:
+  charge: deny
+  refund:
+    decision: require-approval
+    maximumAmount: 100
+
+redaction:
+  environmentVariables:
+    - "*_API_KEY"
+    - "*_TOKEN"
+    - "*_SECRET"
+    - "*_PASSWORD"
+
+audit:
+  enabled: true
+  storeInputs: sanitized

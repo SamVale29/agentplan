@@ -1,0 +1,20 @@
+agent: cli-action-file-agent
+actions:
+  - type: filesystem.write
+    title: Write the approved example output
+    source:
+      adapter: generic-tool
+      agent: cli-action-file-agent
+      tool: write_file
+    resource:
+      kind: file
+      identifier: ./examples/file-agent/data/cli-output.txt
+    input:
+      path: ./examples/file-agent/data/cli-output.txt
+      content: Created by an approved AgentPlan.
+    effects:
+      - Modify one file inside the workspace
+    permissions:
+      - filesystem.write
+    reversible: true
+    rollbackStrategy: Restore the previous file contents.
