@@ -16,4 +16,4 @@ runs:
       run: pnpm build
     - name: Check configuration
       shell: bash
-      run: pnpm exec agentplan doctor --config "${{ inputs.config }}" --json
+      run: pnpm run agentplan -- doctor --config "${{ inputs.config }}" --json
