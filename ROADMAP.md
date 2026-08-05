@@ -27,11 +27,12 @@ The roadmap is directional, not a promise of dates. Security, correctness and a 
 - MCP discovery and gateway improvements.
 - Broader event coverage for OpenAI and Anthropic provider APIs.
 - Additional provider normalizers only when official payloads and lifecycle semantics are verified.
+- GitHub approval adapter with explicit collaborator permission and plan-hash validation.
 
 ## Phase 5 — Developer experience
 
 - Local dashboard search, filters and richer diffs.
-- GitHub Action annotations, capability diffs and SARIF export.
+- GitHub Action capability diffs, SARIF export and pull request reporting.
 - More examples, fixtures and adapter authoring guidance.
 - Optional SQLite storage behind the same `PlanStore` interface.
 

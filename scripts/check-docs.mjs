@@ -14,6 +14,7 @@ const required = [
   "docs/cli.md",
   "docs/sdk.md",
   "docs/adapters.md",
+  "docs/github.md",
   "docs/policies.md",
   "docs/risk-model.md",
   "docs/audit.md",

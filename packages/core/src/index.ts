@@ -12,3 +12,5 @@ export * from "./format.js";
 export * from "./approval.js";
 export * from "./errors.js";
 export * from "./engine.js";
+export * from "./capabilities.js";
+export * from "./sarif.js";

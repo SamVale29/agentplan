@@ -70,6 +70,12 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/adapter-github:
+    dependencies:
+      '@agentplan/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/adapter-http:
     dependencies:
       '@agentplan/core':

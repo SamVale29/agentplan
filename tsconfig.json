@@ -8,6 +8,7 @@
     { "path": "./packages/adapter-mcp" },
     { "path": "./packages/adapter-openai" },
     { "path": "./packages/adapter-anthropic" },
+    { "path": "./packages/adapter-github" },
     { "path": "./packages/sdk" },
     { "path": "./apps/dashboard" },
     { "path": "./apps/cli" }

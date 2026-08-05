@@ -15,6 +15,7 @@ The executable is `agentplan`. In this repository run it with `pnpm exec agentpl
 | `apply <id>` | Verify approval and execute registered filesystem, shell or HTTP actions. |
 | `show [id]` | Show a plan; without an ID, show the newest plan. |
 | `diff --from <id> --to <id>` | Compare normalized action content between plans. Without IDs, show latest execution drift. |
+| `capabilities diff --before <file> --after <file>` | Compare capability snapshots and optionally write a SARIF report with `--sarif <file>`. |
 | `policy check --input <file>` | Create a plan and report policy/risk decisions without executing. |
 | `audit list` | List plans and audit event counts. |
 | `audit show <id>` | Show sanitized audit events for one plan. |
@@ -29,6 +30,7 @@ The executable is `agentplan`. In this repository run it with `pnpm exec agentpl
 - `--config <path>`: choose a configuration file.
 - `--no-color`: reserved for consistent CI invocation; current output is color-free.
 - `--non-interactive`: refuse actions requiring approval instead of prompting.
+- `--fail-on-critical`: return exit code `6` when a capability diff contains a critical addition.
 
 ## Exit codes
 
@@ -45,6 +47,22 @@ The executable is `agentplan`. In this repository run it with `pnpm exec agentpl
 ## Plan input
 
 The `plan` and `policy check` commands accept a YAML or JSON array of raw actions, or an object with `agent` and `actions`. Runtime schemas reject incomplete resources, titles, types and inputs.
+
+## Capability diff
+
+`inspect --json` produces a capability snapshot. Compare two snapshots in CI:
+
+```bash
+agentplan inspect --json > capabilities.after.json
+agentplan capabilities diff \
+  --before capabilities.before.json \
+  --after capabilities.after.json \
+  --sarif agentplan.sarif \
+  --fail-on-critical \
+  --json
+```
+
+Added permissions, external hosts and destructive actions require review. Critical additions return exit code `6`; removed capabilities are reported as informational changes.
 
 ## CI usage
 

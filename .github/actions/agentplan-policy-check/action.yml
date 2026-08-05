@@ -1,10 +1,26 @@
 name: AgentPlan Policy Check
-description: Validate AgentPlan configuration and policy decisions in a pull request
+description: Validate AgentPlan configuration, policy decisions and capability changes in a pull request
 inputs:
   config:
     description: Path to the AgentPlan configuration
     required: false
     default: agentplan.yaml
+  sarif-file:
+    description: Path for the generated SARIF capability report
+    required: false
+    default: agentplan.sarif
+  comment:
+    description: Update the capability diff comment on the pull request
+    required: false
+    default: "false"
+  github-token:
+    description: Token used to update the pull request capability comment
+    required: false
+    default: ""
+  fail-on-critical:
+    description: Fail when a newly added capability is classified as critical
+    required: false
+    default: "true"
 runs:
   using: composite
   steps:
@@ -16,4 +32,51 @@ runs:
       run: pnpm build
     - name: Check configuration
       shell: bash
-      run: pnpm run agentplan -- doctor --config "${{ inputs.config }}" --json
+      run: node apps/cli/dist/index.js doctor --config "${{ inputs.config }}" --json
+    - name: Inspect current capabilities
+      shell: bash
+      run: |
+        set -euo pipefail
+        node apps/cli/dist/index.js inspect --config "${{ inputs.config }}" --json > "$RUNNER_TEMP/agentplan-capabilities-after.json"
+        echo "AGENTPLAN_CAPABILITIES_AFTER=$RUNNER_TEMP/agentplan-capabilities-after.json" >> "$GITHUB_ENV"
+    - name: Compare capabilities and generate SARIF
+      shell: bash
+      env:
+        AGENTPLAN_SARIF_FILE: ${{ inputs.sarif-file }}
+        AGENTPLAN_FAIL_ON_CRITICAL: ${{ inputs.fail-on-critical }}
+      run: |
+        set -euo pipefail
+        before="$RUNNER_TEMP/agentplan-capabilities-before.json"
+        if [ -n "${GITHUB_BASE_REF:-}" ] && git fetch --no-tags --depth=1 origin "$GITHUB_BASE_REF"; then
+          base_config="$RUNNER_TEMP/agentplan-base.yaml"
+          if git show "origin/${GITHUB_BASE_REF}:${{ inputs.config }}" > "$base_config"; then
+            node apps/cli/dist/index.js inspect --config "$base_config" --json > "$before"
+          else
+            cp "$AGENTPLAN_CAPABILITIES_AFTER" "$before"
+          fi
+        else
+          cp "$AGENTPLAN_CAPABILITIES_AFTER" "$before"
+        fi
+
+        status=0
+        critical_flag=()
+        if [ "$AGENTPLAN_FAIL_ON_CRITICAL" = "true" ]; then
+          critical_flag+=(--fail-on-critical)
+        fi
+        node apps/cli/dist/index.js capabilities diff \
+          --before "$before" \
+          --after "$AGENTPLAN_CAPABILITIES_AFTER" \
+          --sarif "$AGENTPLAN_SARIF_FILE" \
+          --json "${critical_flag[@]}" > "$RUNNER_TEMP/agentplan-capabilities-diff.json" || status=$?
+        cat "$RUNNER_TEMP/agentplan-capabilities-diff.json"
+        echo "AGENTPLAN_CAPABILITIES_DIFF=$RUNNER_TEMP/agentplan-capabilities-diff.json" >> "$GITHUB_ENV"
+
+        if [ "${{ inputs.comment }}" = "true" ] && [ -n "${{ inputs.github-token }}" ] && [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ] && [ -n "${GITHUB_EVENT_NUMBER:-}" ]; then
+          node scripts/report-github-capabilities.mjs \
+            --diff "$RUNNER_TEMP/agentplan-capabilities-diff.json" \
+            --token "${{ inputs.github-token }}" \
+            --owner "$GITHUB_REPOSITORY_OWNER" \
+            --repository "${GITHUB_REPOSITORY#*/}" \
+            --issue "$GITHUB_EVENT_NUMBER"
+        fi
+        exit "$status"

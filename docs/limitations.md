@@ -11,7 +11,7 @@ AgentPlan is an authorization layer around cooperating adapters. It is not a uni
 - Complete API clients for OpenAI, Anthropic or other providers.
 - Distributed remote execution and enterprise identity.
 - Billing, marketplace and production-grade multi-tenant dashboard authentication.
-- SQLite persistence and remote approval adapters.
+- SQLite persistence and remote approval adapters beyond the GitHub issue-comment adapter.
 
 ## Consequences
 
