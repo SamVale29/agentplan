@@ -9,12 +9,16 @@ import {
   AgentPlanError,
   FilePlanStore,
   RawActionsDocumentSchema,
+  capabilityDiffToSarif,
   createDefaultConfig,
+  diffCapabilities,
   formatApplySummary,
+  formatCapabilityDiffMarkdown,
   formatPlan,
   hashPlanContent,
   loadConfig,
   redactValue,
+  serializeSarif,
   serializeConfig,
   stableStringify,
   type AgentPlan,
@@ -72,7 +76,7 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
       continue;
     }
     const next = argv[index + 1];
-    if (next && !next.startsWith("--") && ["config", "input", "agent", "by", "comment", "from", "to", "port", "host"].includes(withoutPrefix)) {
+    if (next && !next.startsWith("--") && ["config", "input", "agent", "by", "comment", "from", "to", "port", "host", "before", "after", "sarif"].includes(withoutPrefix)) {
       values.set(withoutPrefix, next);
       index += 2;
       continue;
@@ -158,7 +162,7 @@ async function commandInit(args: ParsedArgs): Promise<number> {
   const store = new FilePlanStore(path.join(cwd, ".agentplan"));
   await store.initialize();
   const gitignore = path.join(cwd, ".gitignore");
-  const recommendations = ["", "# AgentPlan local state", ".agentplan/plans/", ".agentplan/audit/", ".agentplan/runs/"];
+  const recommendations = ["", "# AgentPlan local state", "/.agentplan/"];
   const existing = await fileExists(gitignore) ? await readFile(gitignore, "utf8") : "";
   const missing = recommendations.filter((line) => line.length === 0 || !existing.split(/\r?\n/).includes(line));
   if (missing.length > 0) {
@@ -211,6 +215,11 @@ async function readActionDocument(filePath: string): Promise<{ agent: string; ac
     ...(action.rollbackStrategy === undefined ? {} : { rollbackStrategy: action.rollbackStrategy })
   }));
   return { agent: Array.isArray(document) ? "cli-plan" : document.agent ?? "cli-plan", actions };
+}
+
+async function readStructuredDocument(filePath: string): Promise<unknown> {
+  const source = await readFile(path.resolve(filePath), "utf8");
+  return parseYaml(source);
 }
 
 async function commandPlan(args: ParsedArgs): Promise<number> {
@@ -316,6 +325,23 @@ async function commandPolicyCheck(args: ParsedArgs): Promise<number> {
   return denied ? EXIT_CODES.policy : EXIT_CODES.success;
 }
 
+async function commandCapabilities(args: ParsedArgs): Promise<number> {
+  const beforeFile = valueOf(args, "before");
+  const afterFile = valueOf(args, "after");
+  if (!beforeFile || !afterFile) {
+    throw new AgentPlanError("GENERAL", "capabilities diff requires --before <file> and --after <file>");
+  }
+  const diff = diffCapabilities(await readStructuredDocument(beforeFile), await readStructuredDocument(afterFile));
+  const sarifFile = valueOf(args, "sarif");
+  if (sarifFile) {
+    const target = path.resolve(sarifFile);
+    await writeFile(target, serializeSarif(capabilityDiffToSarif(diff, { informationUri: "https://github.com/SamVale29/agentplan" })), "utf8");
+  }
+  const result = sarifFile === undefined ? diff : { ...diff, sarifFile: path.resolve(sarifFile) };
+  output(args, result, formatCapabilityDiffMarkdown(diff));
+  return hasFlag(args, "fail-on-critical") && diff.hasCritical ? EXIT_CODES.policy : EXIT_CODES.success;
+}
+
 async function commandAudit(args: ParsedArgs): Promise<number> {
   const context = await createContext(args);
   const mode = args.positionals[0] ?? "list";
@@ -418,6 +444,7 @@ function usage(): string {
     "  agentplan apply <plan-id>",
     "  agentplan show [plan-id]",
     "  agentplan diff --from <plan-id> --to <plan-id>",
+    "  agentplan capabilities diff --before <file> --after <file> [--sarif <file>]",
     "  agentplan policy check --input actions.yaml",
     "  agentplan audit list|show <plan-id>",
     "  agentplan doctor",
@@ -447,6 +474,7 @@ async function dispatch(args: ParsedArgs): Promise<number> {
   if (command === "deny") return commandApprove(args, false);
   if (command === "show") return commandShow(args);
   if (command === "diff") return commandDiff(args);
+  if (command === "capabilities" && subcommand === "diff") return commandCapabilities({ ...args, positionals: args.positionals.slice(2) });
   if (command === "policy" && subcommand === "check") return commandPolicyCheck({ ...args, positionals: args.positionals.slice(2) });
   if (command === "audit") return commandAudit({ ...args, positionals: args.positionals.slice(1) });
   if (command === "doctor") return commandDoctor(args);

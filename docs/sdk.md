@@ -50,4 +50,4 @@ Plan storage contains sanitized action input by default. The callback still rece
 
 ## Custom approval
 
-Pass an `ApprovalAdapter` to `createAgentPlan` to integrate a local UI, GitHub, Slack, Teams or another system later. The adapter must return the approver, method, decision and optional comment; the core adds hash and expiration metadata.
+Pass an `ApprovalAdapter` to `createAgentPlan` to integrate a local UI, the GitHub adapter, Slack, Teams or another system. The adapter must return the approver, method, decision and optional comment; the core adds hash and expiration metadata. GitHub approvals must validate repository permissions and the exact plan hash before returning an approval.

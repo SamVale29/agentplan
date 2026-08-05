@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   quality:
@@ -28,3 +29,12 @@ jobs:
         uses: ./.github/actions/agentplan-policy-check
         with:
           config: agentplan.yaml
+          comment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+          github-token: ${{ github.token }}
+      - name: Upload AgentPlan SARIF
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentplan-sarif
+          path: agentplan.sarif
+          if-no-files-found: ignore

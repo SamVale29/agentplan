@@ -36,7 +36,7 @@ The core does not pretend to predict an agent's entire future. A concrete plan c
 - Sanitized JSONL audit events and local JSON plan storage with no remote telemetry by default.
 - Workspace-bound filesystem, non-shell-spawning shell and SSRF-aware HTTP executors.
 - Generic SDK tools, MCP discovery/interception primitives, and OpenAI/Anthropic tool-call normalizers.
-- JSON-capable CLI, local dashboard, executable examples, security-focused tests and a GitHub Action skeleton.
+- JSON-capable CLI, local dashboard, executable examples, security-focused tests, capability diffs, SARIF export and GitHub review integration.
 
 ## Five-minute demo
 
@@ -107,6 +107,7 @@ agentplan deny <plan-id>
 agentplan apply <plan-id>
 agentplan show [plan-id]
 agentplan diff --from <plan-id> --to <plan-id>
+agentplan capabilities diff --before <file> --after <file> [--sarif <file>]
 agentplan policy check --input actions.yaml
 agentplan audit list
 agentplan audit show <plan-id>
@@ -116,6 +117,10 @@ agentplan version
 ```
 
 Relevant commands accept `--json`, `--quiet`, `--config`, `--no-color` and `--non-interactive`. Exit codes are documented in [docs/cli.md](docs/cli.md).
+
+Capability snapshots can be compared in CI. New permissions, external hosts and destructive capabilities are classified deterministically and can be exported as SARIF. The local GitHub Action compares the pull request configuration with its base branch, optionally updates one capability comment and fails on critical additions.
+
+See [GitHub integration](docs/github.md) for the Action and the hash-bound `GitHubApprovalAdapter`.
 
 ## Architecture
 
@@ -182,7 +187,7 @@ Risk is deterministic and explainable. The score starts with an action-type base
 
 ## Limitations
 
-The MVP does not provide universal OS sandboxing, perfect future-chain prediction, guaranteed rollback, a full MCP implementation, complete provider API clients, distributed execution, enterprise identity, billing or a marketplace. SQLite storage, remote approvals and a richer dashboard are planned extensions. Read [docs/limitations.md](docs/limitations.md) for the threat boundary and safe deployment guidance.
+The MVP does not provide universal OS sandboxing, perfect future-chain prediction, guaranteed rollback, a full MCP implementation, complete provider API clients, distributed execution, enterprise identity, billing or a marketplace. SQLite storage, remote approvals beyond GitHub issue comments and a richer dashboard are planned extensions. Read [docs/limitations.md](docs/limitations.md) for the threat boundary and safe deployment guidance.
 
 ## Roadmap
 

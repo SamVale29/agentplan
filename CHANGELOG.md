@@ -2,6 +2,15 @@
 
 All notable changes to AgentPlan are documented here. The project follows semantic versioning while it remains pre-1.0.
 
+## [Unreleased]
+
+### Added
+
+- Capability snapshot diffing with deterministic severity classification and SARIF export.
+- GitHub approval adapter with collaborator permission checks, exact plan-hash commands and timeout fail-closed behavior.
+- GitHub capability comments that update in place instead of duplicating PR reports.
+- CLI and GitHub Action support for capability review in pull requests.
+
 ## [0.1.0] — 2026-08-04
 
 ### Added

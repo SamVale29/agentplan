@@ -10,7 +10,7 @@ These are intentionally small, reviewable ideas for the first public contributor
 6. Document a custom adapter from request to executor.
 7. Add a configurable risk rule for a new resource category.
 8. Translate a technical guide while keeping the English source canonical.
-9. Add SARIF export for policy and capability findings.
-10. Prototype a GitHub approval adapter with a documented trust model.
+9. Extend SARIF export to cover additional policy findings and richer source locations.
+10. Extend the GitHub approval adapter with review-event support and stronger approval attestations.
 11. Add policy fixtures for symlink and Windows path edge cases.
 12. Improve dashboard filtering by risk and policy decision.

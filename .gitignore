@@ -3,6 +3,7 @@ dist/
 *.tsbuildinfo
 coverage/
 .pnpm-store/
+/.agentplan/
 .agentplan/plans/
 .agentplan/audit/
 .agentplan/runs/

@@ -22,6 +22,19 @@ Adapters are capability boundaries. They should normalize untrusted input, expos
 
 `@agentplan/adapter-openai` understands OpenAI Responses `function_call` items and Chat Completions `tool_calls`, following the [OpenAI Responses API reference](https://platform.openai.com/docs/api-reference/responses). `@agentplan/adapter-anthropic` understands Messages `tool_use` content blocks, following [Anthropic tool-use documentation](https://docs.anthropic.com/en/docs/build-with-claude/tool-use). They normalize payloads only; they do not instantiate provider clients, invent endpoints or claim to intercept every streaming variant.
 
+## GitHub approval and reporting
+
+`@agentplan/adapter-github` provides a REST transport, a `GitHubApprovalAdapter` and a `GitHubCapabilityReporter`. The approval adapter creates a sanitized issue comment, then accepts only a standalone command containing the exact plan ID and SHA-256 content hash:
+
+```text
+/agentplan approve plan_01JXYZ sha256:...
+/agentplan deny plan_01JXYZ sha256:...
+```
+
+The commenter must have `write`, `maintain` or `admin` permission in the repository. The adapter fails closed on timeout, plan-integrity mismatch or unauthorized comments. Use a short-lived token with only the repository permissions required for issue comments.
+
+The reporter updates a marked capability comment instead of creating duplicates. Capability additions are classified as notes, warnings or errors and can be serialized as SARIF through `capabilityDiffToSarif`.
+
 ## Custom executor
 
 ```ts

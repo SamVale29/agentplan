@@ -36,7 +36,7 @@ O core não finge prever toda a sequência futura de um agente. Um plano concret
 - Auditoria JSONL sanitizada e armazenamento JSON local, sem telemetria remota por padrão.
 - Executors reais para filesystem limitado ao workspace, shell sem spawn de shell e HTTP com proteção contra SSRF.
 - SDK genérico, primitives de descoberta/interceptação MCP e normalizadores de chamadas de ferramentas OpenAI/Anthropic.
-- CLI com saída JSON, dashboard local, exemplos executáveis, testes de segurança e esqueleto de GitHub Action.
+- CLI com saída JSON, dashboard local, exemplos executáveis, testes de segurança, diffs de capacidades, exportação SARIF e integração de revisão via GitHub.
 
 ## Demonstração em cinco minutos
 
@@ -107,6 +107,7 @@ agentplan deny <plan-id>
 agentplan apply <plan-id>
 agentplan show [plan-id]
 agentplan diff --from <plan-id> --to <plan-id>
+agentplan capabilities diff --before <file> --after <file> [--sarif <file>]
 agentplan policy check --input actions.yaml
 agentplan audit list
 agentplan audit show <plan-id>
@@ -116,6 +117,10 @@ agentplan version
 ```
 
 Os comandos relevantes aceitam `--json`, `--quiet`, `--config`, `--no-color` e `--non-interactive`. Os códigos de saída estão documentados em [docs/cli.md](docs/cli.md).
+
+Snapshots de capacidades podem ser comparados no CI. Novas permissões, hosts externos e capacidades destrutivas são classificados de forma determinística e podem ser exportados em SARIF. A GitHub Action local compara a configuração do pull request com a branch base, pode atualizar um comentário de capacidades e falha quando encontra novas capacidades críticas.
+
+Veja [integração com GitHub](docs/github.md) para configurar a Action e o `GitHubApprovalAdapter`, que vincula a aprovação ao hash do plano.
 
 ## Arquitetura
 
@@ -182,7 +187,7 @@ O risco é determinístico e explicável. O score começa com um valor-base por 
 
 ## Limitações
 
-O MVP não oferece sandbox universal para todos os sistemas operacionais, previsão perfeita da cadeia futura, rollback garantido, implementação completa de MCP, clientes completos das APIs de provedores, execução distribuída, identidade empresarial, billing ou marketplace. Storage SQLite, aprovações remotas e um dashboard mais rico são extensões planejadas. Consulte [docs/limitations.md](docs/limitations.md) para conhecer a fronteira de segurança e orientações de uso.
+O MVP não oferece sandbox universal para todos os sistemas operacionais, previsão perfeita da cadeia futura, rollback garantido, implementação completa de MCP, clientes completos das APIs de provedores, execução distribuída, identidade empresarial, billing ou marketplace. Storage SQLite, aprovações remotas além de comentários no GitHub e um dashboard mais rico são extensões planejadas. Consulte [docs/limitations.md](docs/limitations.md) para conhecer a fronteira de segurança e orientações de uso.
 
 ## Roadmap
 
