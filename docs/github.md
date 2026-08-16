@@ -12,11 +12,11 @@ permissions:
   issues: write
 
 steps:
-  - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-  - uses: pnpm/action-setup@0c17529a66aca453f9227af23103ed11469b1e47 # v4.0.0
+  - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+  - uses: pnpm/action-setup@ff378ebe6b225b0680b81c1ad4498ae0d1d3a5e3 # v6.0.10
     with:
       version: 11.6.0
-  - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+  - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
     with:
       node-version: 24.x
       cache: pnpm
