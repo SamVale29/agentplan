@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, symlink, writeFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
-import { ActionType, AgentPlanConfigSchema, createDefaultConfig, createPlan } from "../packages/core/src/index.js";
+import { ActionType, AgentPlanConfigSchema, createDefaultConfig, createPlan, isPrivateHost } from "../packages/core/src/index.js";
 import { FilesystemActionExecutor } from "../packages/adapter-filesystem/src/index.js";
 import { HttpActionExecutor } from "../packages/adapter-http/src/index.js";
 import { ShellActionExecutor } from "../packages/adapter-shell/src/index.js";
@@ -51,6 +51,44 @@ describe("security boundaries", () => {
     const executor = new HttpActionExecutor();
     const plan = createPlan([{ type: ActionType.NetworkRequest, title: "Call loopback", resource: { kind: "url", identifier: "http://127.0.0.1:4321" }, input: { url: "http://127.0.0.1:4321" }, reversible: false }], createDefaultConfig("security-test"), process.cwd(), { agent: "security-test" });
     await expect(executor.preview(plan.actions[0]!)).rejects.toThrow(/Private and loopback/);
+  });
+
+  test("HTTP executor rejects public hostnames that resolve to private addresses", async () => {
+    const executor = new HttpActionExecutor({ lookupHost: async () => ["192.168.1.20"] });
+    const plan = createPlan([{ type: ActionType.NetworkRequest, title: "Call resolved private host", resource: { kind: "url", identifier: "https://example.test" }, input: { url: "https://example.test" }, reversible: false }], createDefaultConfig("security-test"), process.cwd(), { agent: "security-test" });
+    await expect(executor.execute(plan.actions[0]!)).rejects.toThrow(/resolves to a private/);
+  });
+
+  test("private host detection covers reserved IPv4 and IPv6 forms", () => {
+    expect(isPrivateHost("100.64.0.1")).toBe(true);
+    expect(isPrivateHost("::ffff:127.0.0.1")).toBe(true);
+    expect(isPrivateHost("fc00::1")).toBe(true);
+    expect(isPrivateHost("fc.example.com")).toBe(false);
+  });
+
+  test("shell executor rejects dangerous environment overrides", async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "agentplan-shell-env-"));
+    temporaryDirectories.push(directory);
+    const executor = new ShellActionExecutor({ workspaceRoot: directory });
+    const plan = createPlan([{ type: ActionType.ShellExecute, title: "Override path", resource: { kind: "command", identifier: "node" }, input: { argv: [process.execPath, "--version"], env: { PATH: "malicious" } }, reversible: true }], createDefaultConfig("security-test"), directory, { agent: "security-test" });
+    await expect(executor.preview(plan.actions[0]!)).rejects.toThrow(/dangerous environment variable PATH/);
+  });
+
+  test("shell executor rejects a cwd symlink outside the workspace", async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "agentplan-shell-cwd-"));
+    temporaryDirectories.push(directory);
+    const workspace = path.join(directory, "workspace");
+    const outside = path.join(directory, "outside");
+    await mkdir(workspace, { recursive: true });
+    await mkdir(outside, { recursive: true });
+    try {
+      await symlink(outside, path.join(workspace, "link"), "junction");
+    } catch {
+      return;
+    }
+    const executor = new ShellActionExecutor({ workspaceRoot: workspace });
+    const plan = createPlan([{ type: ActionType.ShellExecute, title: "Escape cwd", resource: { kind: "command", identifier: "node" }, input: { argv: [process.execPath, "--version"], cwd: "./link" }, reversible: true }], createDefaultConfig("security-test"), workspace, { agent: "security-test" });
+    await expect(executor.preview(plan.actions[0]!)).rejects.toThrow(/outside the configured workspace/);
   });
 
   test("shell executor times out without enabling a shell", async () => {

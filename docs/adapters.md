@@ -8,11 +8,11 @@ Adapters are capability boundaries. They should normalize untrusted input, expos
 
 ## Shell
 
-`@agentplan/adapter-shell` accepts `argv`, optional `cwd`, environment values and a bounded timeout. It invokes `spawn(executable, args, { shell: false })`, captures bounded stdout/stderr and reports exit status. The adapter intentionally does not parse arbitrary shell source. Command policy is evaluated before it is injected into an executor.
+`@agentplan/adapter-shell` accepts `argv`, optional `cwd`, environment values and a bounded timeout. It invokes `spawn(executable, args, { shell: false })`, constrains existing symlinks to the workspace, rejects dangerous environment overrides such as `PATH`, `NODE_OPTIONS` and `GIT_SSH_COMMAND`, captures bounded stdout/stderr and reports exit status. The adapter intentionally does not parse arbitrary shell source. Command policy is evaluated before it is injected into an executor.
 
 ## HTTP
 
-`@agentplan/adapter-http` supports HTTP/HTTPS requests with bounded response size, timeout and no redirects. It rejects private and loopback targets at executor level in addition to policy evaluation. It is not a general SSRF defense for the rest of an application; enforce network egress controls outside AgentPlan as well.
+`@agentplan/adapter-http` supports HTTP/HTTPS requests with bounded response size, timeout and no redirects. It rejects private and loopback targets, including private DNS resolutions, at executor level in addition to policy evaluation. It is not a general SSRF defense for the rest of an application; enforce network egress controls outside AgentPlan as well.
 
 ## MCP
 

@@ -57,7 +57,7 @@ export class FilesystemActionExecutor implements ActionExecutor {
 
   public constructor(options: FilesystemExecutorOptions) {
     this.workspaceRoot = path.resolve(options.workspaceRoot);
-    this.maxFileSizeBytes = options.maxFileSizeBytes ?? 5 * 1024 * 1024;
+    this.maxFileSizeBytes = Math.min(Math.max(options.maxFileSizeBytes ?? 5 * 1024 * 1024, 1_024), 100 * 1024 * 1024);
   }
 
   public supports(action: AgentPlanAction): boolean {
@@ -102,6 +102,7 @@ export class FilesystemActionExecutor implements ActionExecutor {
       }
       this.assertSize(Buffer.byteLength(input.content, encoding), target);
       await mkdir(path.dirname(target), { recursive: true });
+      await this.assertNoExternalSymlink(target);
       await writeFile(target, input.content, { encoding, flag: input.overwrite === false ? "wx" : "w", mode: 0o600 });
       return ActionResultSchema.parse({ success: true, summary: `Wrote ${toWorkspaceIdentifier(this.workspaceRoot, target)}`, affectedResources: [action.resource] });
     }
@@ -111,6 +112,7 @@ export class FilesystemActionExecutor implements ActionExecutor {
       }
       const destination = await this.safePath(input.destination);
       await mkdir(path.dirname(destination), { recursive: true });
+      await this.assertNoExternalSymlink(destination);
       if (input.overwrite !== true) {
         try {
           await lstat(destination);

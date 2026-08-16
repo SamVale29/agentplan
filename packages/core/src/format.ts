@@ -4,32 +4,36 @@ import { isRecord } from "./utils.js";
 
 const riskLabel: Record<RiskLevel, string> = { low: "Low", medium: "Medium", high: "High", critical: "Critical" };
 
+function displayText(value: string): string {
+  return value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/[\\`*_{}[\]()#+\-.!|<>]/g, "\\$&").replace(/\s+/g, " ").trim();
+}
+
 function inputSummary(action: AgentPlanAction): string[] {
   const input = isRecord(action.sanitizedInput) ? action.sanitizedInput : {};
   if (action.type === "shell.execute") {
     const command = getCommandDisplay(input);
-    return command ? [`Command: ${command}`] : [];
+    return command ? [`Command: ${displayText(command)}`] : [];
   }
   if (action.type === "network.request" && typeof input.url === "string") {
-    return [`URL: ${input.url}`, ...(typeof input.method === "string" ? [`Method: ${input.method}`] : [])];
+    return [`URL: ${displayText(input.url)}`, ...(typeof input.method === "string" ? [`Method: ${displayText(input.method)}`] : [])];
   }
   if (typeof input.path === "string") {
-    return [`Path: ${input.path}`];
+    return [`Path: ${displayText(input.path)}`];
   }
   return [];
 }
 
 export function formatAction(action: AgentPlanAction): string {
-  const lines = [`${action.sequence}. ${action.title}`, `   Type: ${action.type}`, `   Resource: ${action.resource.displayName ?? action.resource.identifier}`, `   Risk: ${riskLabel[action.risk.level]} (${action.risk.score}/100)`, `   Reversible: ${action.reversible ? "Yes" : "No"}`, `   Status: ${action.status}`];
+  const lines = [`${action.sequence}. ${displayText(action.title)}`, `   Type: ${displayText(action.type)}`, `   Resource: ${displayText(action.resource.displayName ?? action.resource.identifier)}`, `   Risk: ${riskLabel[action.risk.level]} (${action.risk.score}/100)`, `   Reversible: ${action.reversible ? "Yes" : "No"}`, `   Status: ${action.status}`];
   for (const detail of inputSummary(action)) {
     lines.push(`   ${detail}`);
   }
   if (action.risk.reasons.length > 0) {
-    lines.push(`   Why: ${action.risk.reasons.join("; ")}`);
+    lines.push(`   Why: ${action.risk.reasons.map(displayText).join("; ")}`);
   }
   for (const evaluation of action.policyResults) {
     const marker = evaluation.decision === "allow" ? "OK" : evaluation.decision === "deny" ? "BLOCK" : "REVIEW";
-    lines.push(`   Policy [${marker}]: ${evaluation.reason} (${evaluation.configPath})`);
+    lines.push(`   Policy [${marker}]: ${displayText(evaluation.reason)} (${displayText(evaluation.configPath)})`);
   }
   return lines.join("\n");
 }
@@ -38,16 +42,16 @@ export function formatPlan(plan: AgentPlan): string {
   const sections = [
     "AgentPlan",
     "",
-    `Plan ID: ${plan.planId}`,
-    `Agent: ${plan.agent}`,
-    `Environment: ${plan.environment}`,
+    `Plan ID: ${displayText(plan.planId)}`,
+    `Agent: ${displayText(plan.agent)}`,
+    `Environment: ${displayText(plan.environment)}`,
     `Status: ${plan.status}`,
     `Risk: ${plan.actions.reduce((total, action) => Math.max(total, action.risk.score), 0)}/100`,
     "",
     "Proposed actions:",
     plan.actions.map(formatAction).join("\n\n"),
     "",
-    `Plan hash: ${plan.contentHash}`
+    `Plan hash: ${displayText(plan.contentHash)}`
   ];
   return sections.join("\n");
 }

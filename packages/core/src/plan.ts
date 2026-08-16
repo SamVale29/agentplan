@@ -92,6 +92,9 @@ export function actionApprovalRequirement(action: AgentPlanAction, config: Agent
 }
 
 export function createPlan(rawActions: readonly RawAction[], config: AgentPlanConfig, workspaceRoot: string, options: CreatePlanOptions = {}): AgentPlan {
+  if (rawActions.length === 0) {
+    throw new Error("A plan must contain at least one action");
+  }
   const planId = options.planId ?? makeId("plan");
   const createdAt = options.createdAt ?? new Date().toISOString();
   const actions = rawActions.map((raw, index) => normalizeAction(raw, planId, index + 1, config, workspaceRoot, createdAt));
@@ -122,6 +125,9 @@ export function withSanitizedInputs(plan: AgentPlan, sanitize: (value: unknown) 
 
 export function approvePlan(plan: AgentPlan, decision: ApprovalDecision, ttlMinutes = 60, now = new Date()): AgentPlan {
   assertPlanIntegrity(plan);
+  if (!["draft", "waiting-for-approval", "expired"].includes(plan.status)) {
+    throw new Error(`Plan ${plan.planId} is ${plan.status} and cannot be approved.`);
+  }
   if (!decision.approved) {
     return denyPlan(plan, now);
   }

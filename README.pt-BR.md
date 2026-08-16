@@ -153,11 +153,13 @@ O AgentPlan é um ponto de controle, não um sandbox universal. A postura padrã
 - negar por padrão e aplicar o menor privilégio;
 - validar caminhos dentro do workspace e rejeitar symlinks externos;
 - executar argv com `shell: false`, além de limitar tempo e saída;
-- rejeitar destinos HTTP privados e hosts desconhecidos até haver aprovação explícita;
+- rejeitar destinos HTTP privados, resoluções DNS privadas e hosts desconhecidos até haver aprovação explícita;
 - mascarar segredos antes do terminal, da auditoria e das respostas do dashboard;
 - vincular aprovações a hash SHA-256 e expiração;
 - executar somente ações presentes no plano aprovado;
 - registrar explicações de política, metadados de aprovação, resultados e drift.
+
+O executor de shell também rejeita sobrescritas perigosas de ambiente, como `PATH`, `NODE_OPTIONS` e `GIT_SSH_COMMAND`, e o storage JSON local é criado com permissões somente para o proprietário quando o sistema operacional suporta isso.
 
 Leia [SECURITY.md](SECURITY.md) e o [modelo de ameaças](docs/security/threat-model.md) antes de conectar um agente a sistemas de produção.
 
@@ -211,6 +213,8 @@ pnpm check:examples
 ```
 
 Os testes usam diretórios temporários e mocks. Eles não fazem cobranças, reembolsos, exclusões destrutivas nem chamadas a provedores externos.
+
+O smoke test do CI executa a CLI e o dashboard compilados em um workspace temporário. Ele cobre inicialização, bloqueio de política, plan/approve/apply, uma escrita real no workspace e leituras da API do dashboard sem contatar provedores externos.
 
 Leia [CONTRIBUTING.md](CONTRIBUTING.md) antes de abrir um pull request. Código, testes, documentação técnica, templates de issue e mensagens de commit usam inglês; issues e discussões da comunidade podem ser escritas em inglês ou português brasileiro.
 

@@ -51,14 +51,37 @@ function safePlan(plan: AgentPlan): unknown {
 
 function sendJson(response: ServerResponse, value: unknown, status = 200): void {
   const body = JSON.stringify(value);
-  response.writeHead(status, { "content-type": "application/json; charset=utf-8", "content-length": Buffer.byteLength(body) });
+  response.writeHead(status, {
+    "cache-control": "no-store",
+    "content-type": "application/json; charset=utf-8",
+    "content-length": Buffer.byteLength(body),
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "referrer-policy": "no-referrer"
+  });
   response.end(body);
+}
+
+function decodePlanId(value: string): string | undefined {
+  try {
+    const planId = decodeURIComponent(value);
+    return /^plan_[A-Za-z0-9]+$/.test(planId) ? planId : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function handle(request: IncomingMessage, response: ServerResponse, store: FilePlanStore): Promise<void> {
   const requestUrl = new URL(request.url ?? "/", "http://localhost");
   if (request.method === "GET" && requestUrl.pathname === "/") {
-    response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    response.writeHead(200, {
+      "cache-control": "no-store",
+      "content-type": "text/html; charset=utf-8",
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "referrer-policy": "no-referrer"
+    });
     response.end(dashboardHtml);
     return;
   }
@@ -68,7 +91,12 @@ async function handle(request: IncomingMessage, response: ServerResponse, store:
   }
   const planMatch = /^\/api\/plans\/([^/]+)$/.exec(requestUrl.pathname);
   if (request.method === "GET" && planMatch?.[1]) {
-    const plan = await store.getPlan(decodeURIComponent(planMatch[1]));
+    const planId = decodePlanId(planMatch[1]);
+    if (!planId) {
+      sendJson(response, { error: "Invalid plan id" }, 400);
+      return;
+    }
+    const plan = await store.getPlan(planId);
     if (!plan) {
       sendJson(response, { error: "Plan not found" }, 404);
       return;
@@ -78,7 +106,12 @@ async function handle(request: IncomingMessage, response: ServerResponse, store:
   }
   const auditMatch = /^\/api\/audit\/([^/]+)$/.exec(requestUrl.pathname);
   if (request.method === "GET" && auditMatch?.[1]) {
-    sendJson(response, redactValue(await store.getAudit(decodeURIComponent(auditMatch[1]))));
+    const planId = decodePlanId(auditMatch[1]);
+    if (!planId) {
+      sendJson(response, { error: "Invalid plan id" }, 400);
+      return;
+    }
+    sendJson(response, redactValue(await store.getAudit(planId)));
     return;
   }
   sendJson(response, { error: "Not found" }, 404);

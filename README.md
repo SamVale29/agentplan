@@ -153,11 +153,13 @@ AgentPlan is a control point, not a universal sandbox. Its default posture is:
 - deny by default and least privilege;
 - validate paths within a configured workspace and reject external symlinks;
 - execute shell argv with `shell: false` and bounded time/output;
-- reject private-network HTTP targets and unknown hosts unless explicitly approved;
+- reject private-network HTTP targets and private DNS resolutions, plus unknown hosts unless explicitly approved;
 - redact secrets before terminal output, audit storage and dashboard responses;
 - bind approvals to a SHA-256 content hash and expiration;
 - execute only actions present in the approved plan;
 - record policy explanations, approval metadata, results and drift.
+
+The shell executor also rejects dangerous environment overrides such as `PATH`, `NODE_OPTIONS` and `GIT_SSH_COMMAND`, and the local JSON store is created with owner-only permissions where the operating system supports them.
 
 Read [SECURITY.md](SECURITY.md) and the [threat model](docs/security/threat-model.md) before connecting an agent to production systems.
 
@@ -211,6 +213,8 @@ pnpm check:examples
 ```
 
 Tests use temporary directories and mocks. They do not perform real charges, refunds, destructive deletes or external provider calls.
+
+The CI smoke test runs the compiled CLI and dashboard against a temporary workspace. It exercises initialization, policy blocking, plan/approve/apply, a real workspace write and dashboard API reads without contacting external providers.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Technical documentation, code, tests, issue templates and commit messages use English; community issues and discussions may be written in English or Brazilian Portuguese.
 

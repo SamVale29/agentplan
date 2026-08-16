@@ -1,9 +1,12 @@
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import type { ActionExecutor, ActionPreview, ActionResult, AgentPlanAction } from "@agentplan/core";
 import { ActionResultSchema, ActionType, isPrivateHost, isRecord, truncate } from "@agentplan/core";
 
 export interface HttpExecutorOptions {
   maxResponseBytes?: number;
   defaultTimeoutMs?: number;
+  lookupHost?: (hostname: string) => Promise<readonly string[]>;
 }
 
 interface HttpInput {
@@ -19,7 +22,10 @@ function httpInput(action: AgentPlanAction): HttpInput {
     throw new Error(`HTTP action ${action.id} requires input.url`);
   }
   const method = typeof action.input.method === "string" ? action.input.method.toUpperCase() : "GET";
-  const headers = isRecord(action.input.headers) && Object.entries(action.input.headers).every(([, value]) => typeof value === "string") ? Object.fromEntries(Object.entries(action.input.headers).map(([key, value]) => [key, value as string])) : {};
+  if (action.input.headers !== undefined && (!isRecord(action.input.headers) || !Object.entries(action.input.headers).every(([key, value]) => key.length > 0 && typeof value === "string"))) {
+    throw new Error(`HTTP action ${action.id} requires input.headers to contain string values`);
+  }
+  const headers = action.input.headers === undefined ? {} : Object.fromEntries(Object.entries(action.input.headers).map(([key, value]) => [key, value as string]));
   const bodyValue = action.input.body;
   const body = typeof bodyValue === "string" ? bodyValue : bodyValue === undefined ? undefined : JSON.stringify(bodyValue);
   return {
@@ -35,10 +41,12 @@ export class HttpActionExecutor implements ActionExecutor {
   public readonly name = "http";
   private readonly maxResponseBytes: number;
   private readonly defaultTimeoutMs: number;
+  private readonly lookupHost: (hostname: string) => Promise<readonly string[]>;
 
   public constructor(options: HttpExecutorOptions = {}) {
     this.maxResponseBytes = Math.min(Math.max(options.maxResponseBytes ?? 1_000_000, 1_024), 10_000_000);
     this.defaultTimeoutMs = Math.min(Math.max(options.defaultTimeoutMs ?? 30_000, 100), 60_000);
+    this.lookupHost = options.lookupHost ?? (async (hostname) => (await lookup(hostname, { all: true, verbatim: true })).map((entry) => entry.address));
   }
 
   public supports(action: AgentPlanAction): boolean {
@@ -54,6 +62,7 @@ export class HttpActionExecutor implements ActionExecutor {
   public async execute(action: AgentPlanAction): Promise<ActionResult> {
     const input = httpInput(action);
     const url = this.safeUrl(input.url);
+    await this.assertResolvedHost(url.hostname);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), Math.min(Math.max(input.timeoutMs ?? this.defaultTimeoutMs, 100), 60_000));
     try {
@@ -84,5 +93,20 @@ export class HttpActionExecutor implements ActionExecutor {
       throw new Error("Private and loopback network targets are blocked by the HTTP adapter");
     }
     return url;
+  }
+
+  private async assertResolvedHost(hostname: string): Promise<void> {
+    if (isIP(hostname.replace(/^\[|\]$/g, "")) !== 0) {
+      return;
+    }
+    let addresses: readonly string[];
+    try {
+      addresses = await this.lookupHost(hostname);
+    } catch {
+      throw new Error(`Unable to resolve network target ${hostname}; request blocked`);
+    }
+    if (addresses.length === 0 || addresses.some((address) => isPrivateHost(address))) {
+      throw new Error(`Network target ${hostname} resolves to a private or loopback address`);
+    }
   }
 }
