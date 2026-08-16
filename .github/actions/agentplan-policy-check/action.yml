@@ -32,24 +32,31 @@ runs:
       run: pnpm build
     - name: Check configuration
       shell: bash
-      run: node apps/cli/dist/index.js doctor --config "${{ inputs.config }}" --json
+      env:
+        AGENTPLAN_CONFIG: ${{ inputs.config }}
+      run: node apps/cli/dist/index.js doctor --config "$AGENTPLAN_CONFIG" --json
     - name: Inspect current capabilities
       shell: bash
+      env:
+        AGENTPLAN_CONFIG: ${{ inputs.config }}
       run: |
         set -euo pipefail
-        node apps/cli/dist/index.js inspect --config "${{ inputs.config }}" --json > "$RUNNER_TEMP/agentplan-capabilities-after.json"
+        node apps/cli/dist/index.js inspect --config "$AGENTPLAN_CONFIG" --json > "$RUNNER_TEMP/agentplan-capabilities-after.json"
         echo "AGENTPLAN_CAPABILITIES_AFTER=$RUNNER_TEMP/agentplan-capabilities-after.json" >> "$GITHUB_ENV"
     - name: Compare capabilities and generate SARIF
       shell: bash
       env:
+        AGENTPLAN_CONFIG: ${{ inputs.config }}
         AGENTPLAN_SARIF_FILE: ${{ inputs.sarif-file }}
         AGENTPLAN_FAIL_ON_CRITICAL: ${{ inputs.fail-on-critical }}
+        AGENTPLAN_COMMENT: ${{ inputs.comment }}
+        AGENTPLAN_GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
         set -euo pipefail
         before="$RUNNER_TEMP/agentplan-capabilities-before.json"
         if [ -n "${GITHUB_BASE_REF:-}" ] && git fetch --no-tags --depth=1 origin "$GITHUB_BASE_REF"; then
           base_config="$RUNNER_TEMP/agentplan-base.yaml"
-          if git show "origin/${GITHUB_BASE_REF}:${{ inputs.config }}" > "$base_config"; then
+          if git show "origin/${GITHUB_BASE_REF}:${AGENTPLAN_CONFIG}" > "$base_config"; then
             node apps/cli/dist/index.js inspect --config "$base_config" --json > "$before"
           else
             cp "$AGENTPLAN_CAPABILITIES_AFTER" "$before"
@@ -71,10 +78,10 @@ runs:
         cat "$RUNNER_TEMP/agentplan-capabilities-diff.json"
         echo "AGENTPLAN_CAPABILITIES_DIFF=$RUNNER_TEMP/agentplan-capabilities-diff.json" >> "$GITHUB_ENV"
 
-        if [ "${{ inputs.comment }}" = "true" ] && [ -n "${{ inputs.github-token }}" ] && [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ] && [ -n "${GITHUB_EVENT_NUMBER:-}" ]; then
+        if [ "$AGENTPLAN_COMMENT" = "true" ] && [ -n "$AGENTPLAN_GITHUB_TOKEN" ] && [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ] && [ -n "${GITHUB_EVENT_NUMBER:-}" ]; then
           node scripts/report-github-capabilities.mjs \
             --diff "$RUNNER_TEMP/agentplan-capabilities-diff.json" \
-            --token "${{ inputs.github-token }}" \
+            --token "$AGENTPLAN_GITHUB_TOKEN" \
             --owner "$GITHUB_REPOSITORY_OWNER" \
             --repository "${GITHUB_REPOSITORY#*/}" \
             --issue "$GITHUB_EVENT_NUMBER"

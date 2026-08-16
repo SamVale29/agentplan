@@ -121,12 +121,22 @@ export class GitHubRestTransport implements GitHubApprovalTransport {
   }
 
   public async listIssueComments(target: GitHubIssueTarget & { since?: string }): Promise<readonly GitHubComment[]> {
-    const query = target.since === undefined ? "" : `?since=${encodeURIComponent(target.since)}`;
-    const value = await this.request<unknown>(`/repos/${encodeURIComponent(target.owner)}/${encodeURIComponent(target.repository)}/issues/${target.issueNumber}/comments?per_page=100${query.length === 0 ? "" : `&${query.slice(1)}`}`);
-    if (!Array.isArray(value)) {
-      throw new Error("GitHub API returned an invalid comments response.");
+    const comments: GitHubComment[] = [];
+    for (let page = 1; page <= 10; page += 1) {
+      const query = new URLSearchParams({ per_page: "100", page: String(page) });
+      if (target.since !== undefined) {
+        query.set("since", target.since);
+      }
+      const value = await this.request<unknown>(`/repos/${encodeURIComponent(target.owner)}/${encodeURIComponent(target.repository)}/issues/${target.issueNumber}/comments?${query.toString()}`);
+      if (!Array.isArray(value)) {
+        throw new Error("GitHub API returned an invalid comments response.");
+      }
+      comments.push(...value.map(commentFromApi));
+      if (value.length < 100) {
+        break;
+      }
     }
-    return value.map(commentFromApi);
+    return comments;
   }
 
   public async getCollaboratorPermission(target: GitHubIssueTarget & { username: string }): Promise<string> {
@@ -285,7 +295,7 @@ export class GitHubCapabilityReporter {
 
   public async report(diff: CapabilityDiff): Promise<GitHubCommentReference> {
     const body = `${this.marker}\n${formatCapabilityDiffMarkdown(diff)}`;
-    const existing = (await this.transport.listIssueComments(this.target)).find((comment) => comment.body.includes(this.marker));
+    const existing = (await this.transport.listIssueComments(this.target)).find((comment) => comment.body.startsWith(this.marker));
     if (existing && this.transport.updateIssueComment) {
       return this.transport.updateIssueComment({ ...this.target, commentId: existing.id, body });
     }

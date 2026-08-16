@@ -111,10 +111,12 @@ function output(args: ParsedArgs, value: unknown, human?: string): void {
 }
 
 function safePlanForOutput(plan: AgentPlan): unknown {
-  return {
+  return redactValue({
     ...plan,
     actions: plan.actions.map((action) => ({ ...action, input: action.sanitizedInput }))
-  };
+  }, {
+    environmentPatterns: ["*_API_KEY", "*_TOKEN", "*_SECRET", "*_PASSWORD"]
+  });
 }
 
 function contextPath(args: ParsedArgs, cwd: string): string {

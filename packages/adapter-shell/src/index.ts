@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 import type { ActionExecutor, ActionPreview, ActionResult, AgentPlanAction } from "@agentplan/core";
 import { ActionResultSchema, ActionType, isWithin, isRecord, truncate } from "@agentplan/core";
@@ -16,24 +17,50 @@ interface ShellInput {
   timeoutMs?: number;
 }
 
+const BLOCKED_ENVIRONMENT_KEYS = /^(?:PATH|PATHEXT|NODE_OPTIONS|NODE_PATH|LD_PRELOAD|LD_LIBRARY_PATH|DYLD_[A-Z0-9_]+|BASH_ENV|ENV|PROMPT_COMMAND|GIT_SSH_COMMAND|GIT_CONFIG(?:_.+)?|PYTHONPATH|RUBYOPT|PERL5OPT|COMSPEC|SHELL)$/i;
+
+function environmentInput(value: unknown, actionId: string): Record<string, string> | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isRecord(value) || !Object.entries(value).every(([key, item]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key) && typeof item === "string")) {
+    throw new Error(`Shell action ${actionId} requires input.env to contain valid string environment variables`);
+  }
+  const environment = Object.fromEntries(Object.entries(value).map(([key, item]) => [key, item as string]));
+  const blocked = Object.keys(environment).find((key) => BLOCKED_ENVIRONMENT_KEYS.test(key));
+  if (blocked) {
+    throw new Error(`Shell action ${actionId} cannot override the dangerous environment variable ${blocked}`);
+  }
+  return environment;
+}
+
 function shellInput(action: AgentPlanAction): ShellInput {
   if (!isRecord(action.input)) {
     throw new Error(`Shell action ${action.id} requires an argv array`);
   }
   const argv = action.input.argv;
-  if (Array.isArray(argv) && argv.length > 0 && argv.every((item) => typeof item === "string")) {
+  if (argv !== undefined) {
+    if (!Array.isArray(argv) || argv.length === 0 || !argv.every((item) => typeof item === "string")) {
+      throw new Error(`Shell action ${action.id} requires input.argv to be a non-empty string array`);
+    }
+    const env = environmentInput(action.input.env, action.id);
     return {
-      argv,
+      argv: argv as string[],
       ...(typeof action.input.cwd === "string" ? { cwd: action.input.cwd } : {}),
-      ...(isRecord(action.input.env) && Object.entries(action.input.env).every(([, value]) => typeof value === "string") ? { env: Object.fromEntries(Object.entries(action.input.env).map(([key, value]) => [key, value as string])) } : {}),
+      ...(env === undefined ? {} : { env }),
       ...(typeof action.input.timeoutMs === "number" ? { timeoutMs: action.input.timeoutMs } : {})
     };
   }
   if (typeof action.input.command === "string" && action.input.command.length > 0) {
-    const args = Array.isArray(action.input.args) && action.input.args.every((item) => typeof item === "string") ? action.input.args : [];
+    if (action.input.args !== undefined && (!Array.isArray(action.input.args) || !action.input.args.every((item) => typeof item === "string"))) {
+      throw new Error(`Shell action ${action.id} requires input.args to be a string array`);
+    }
+    const args = action.input.args === undefined ? [] : action.input.args as string[];
+    const env = environmentInput(action.input.env, action.id);
     return {
       argv: [action.input.command, ...args],
       ...(typeof action.input.cwd === "string" ? { cwd: action.input.cwd } : {}),
+      ...(env === undefined ? {} : { env }),
       ...(typeof action.input.timeoutMs === "number" ? { timeoutMs: action.input.timeoutMs } : {})
     };
   }
@@ -58,13 +85,13 @@ export class ShellActionExecutor implements ActionExecutor {
 
   public async preview(action: AgentPlanAction): Promise<ActionPreview> {
     const input = shellInput(action);
-    const cwd = input.cwd ? this.safeCwd(input.cwd) : this.workspaceRoot;
+    const cwd = await this.safeCwd(input.cwd ?? ".");
     return { summary: `Run ${input.argv.join(" ")}`, details: [`cwd: ${cwd}`, "spawned with shell=false", `timeout: ${input.timeoutMs ?? this.defaultTimeoutMs}ms`] };
   }
 
   public async execute(action: AgentPlanAction): Promise<ActionResult> {
     const input = shellInput(action);
-    const cwd = input.cwd ? this.safeCwd(input.cwd) : this.workspaceRoot;
+    const cwd = await this.safeCwd(input.cwd ?? ".");
     const requestedExecutable = input.argv[0];
     const executable = process.platform === "win32" && requestedExecutable && ["npm", "pnpm", "npx", "yarn"].includes(requestedExecutable) ? `${requestedExecutable}.cmd` : requestedExecutable;
     if (!executable) {
@@ -107,11 +134,15 @@ export class ShellActionExecutor implements ActionExecutor {
     });
   }
 
-  private safeCwd(requested: string): string {
+  private async safeCwd(requested: string): Promise<string> {
     const candidate = path.resolve(this.workspaceRoot, requested);
-    if (!isWithin(this.workspaceRoot, candidate)) {
+    const workspace = await realpath(this.workspaceRoot);
+    const resolved = await realpath(candidate).catch(() => {
+      throw new Error(`Command cwd does not exist: ${requested}`);
+    });
+    if (!isWithin(workspace, resolved)) {
       throw new Error(`Command cwd is outside the configured workspace: ${requested}`);
     }
-    return candidate;
+    return resolved;
   }
 }

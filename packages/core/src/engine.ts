@@ -57,6 +57,7 @@ export class AgentPlanEngine {
   private readonly nonInteractive: boolean;
   private readonly approvalTtlMinutes: number;
   private readonly actor: string;
+  private readonly applyingPlans = new Set<string>();
 
   public constructor(options: EngineOptions) {
     this.config = options.config;
@@ -112,6 +113,9 @@ export class AgentPlanEngine {
     }
     if (plan.status === "blocked") {
       throw new PolicyBlockedError(`Plan ${plan.planId} contains blocked actions and cannot be approved.`);
+    }
+    if (!["draft", "waiting-for-approval", "expired"].includes(plan.status)) {
+      throw new ApprovalRequiredError(`Plan ${plan.planId} is ${plan.status}; only draft, waiting-for-approval or expired plans can be approved.`);
     }
     const updated = decision.approved ? approvePlan(plan, decision, this.approvalTtlMinutes) : denyPlan(plan);
     await this.store.savePlan(updated);
@@ -190,6 +194,18 @@ export class AgentPlanEngine {
   }
 
   public async apply(planId: string, executors: readonly ActionExecutor[]): Promise<AgentPlan> {
+    if (this.applyingPlans.has(planId)) {
+      throw new ApprovalRequiredError(`Plan ${planId} is already being applied by this engine.`);
+    }
+    this.applyingPlans.add(planId);
+    try {
+      return await this.applyPlan(planId, executors);
+    } finally {
+      this.applyingPlans.delete(planId);
+    }
+  }
+
+  private async applyPlan(planId: string, executors: readonly ActionExecutor[]): Promise<AgentPlan> {
     let plan = await this.get(planId);
     try {
       assertPlanIntegrity(plan);

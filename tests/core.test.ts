@@ -75,6 +75,7 @@ describe("core policy, risk and safety invariants", () => {
 
   test("runtime schema rejects incomplete actions", () => {
     expect(() => RawActionSchema.parse({ type: ActionType.FilesystemRead })).toThrow();
+    expect(() => createPlan([], createDefaultConfig("test"), process.cwd())).toThrow(/at least one action/);
   });
 });
 
@@ -130,6 +131,20 @@ describe("plan integrity and execution", () => {
     expect(applied.status).toBe("completed");
     expect(await readFile(path.join(workspace, "fixtures/output.txt"), "utf8")).toBe("approved content");
     expect(applied.execution?.drift?.level).toBe("no-drift");
+  });
+
+  test("does not reapprove a completed plan", async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), "agentplan-replay-"));
+    temporaryDirectories.push(directory);
+    const workspace = path.join(directory, "workspace");
+    await mkdirSafe(path.join(workspace, "fixtures"));
+    const config = configFor(workspace);
+    const store = new FilePlanStore(path.join(directory, ".agentplan"));
+    const engine = new AgentPlanEngine({ config, workspaceRoot: workspace, store, nonInteractive: true });
+    const plan = await engine.create([{ type: ActionType.FilesystemWrite, title: "Write once", source: { adapter: "test" }, resource: { kind: "file", identifier: "./fixtures/output.txt" }, input: { path: "./fixtures/output.txt", content: "once" }, reversible: true }], "test-agent");
+    await engine.approve(plan.planId, { approved: true, approvedBy: "test", method: "external" });
+    await engine.apply(plan.planId, [new FilesystemActionExecutor({ workspaceRoot: workspace })]);
+    await expect(engine.approve(plan.planId, { approved: true, approvedBy: "attacker", method: "external" })).rejects.toBeInstanceOf(ApprovalRequiredError);
   });
 
   test("modified approved plans fail integrity verification", async () => {

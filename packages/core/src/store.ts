@@ -1,4 +1,4 @@
-import { appendFile, mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { appendFile, chmod, mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { AgentPlanSchema, AuditEventSchema, type AgentPlan, type AuditEvent, type PlanStore } from "./model.js";
 import { makeId } from "./utils.js";
@@ -27,11 +27,10 @@ export class FilePlanStore implements PlanStore {
   }
 
   public async initialize(): Promise<void> {
-    await Promise.all([
-      mkdir(this.plansDir, { recursive: true }),
-      mkdir(this.auditDir, { recursive: true }),
-      mkdir(this.runsDir, { recursive: true })
-    ]);
+    await Promise.all([this.plansDir, this.auditDir, this.runsDir].map(async (directory) => {
+      await mkdir(directory, { recursive: true, mode: 0o700 });
+      await chmod(directory, 0o700);
+    }));
   }
 
   public async savePlan(plan: AgentPlan): Promise<void> {
@@ -62,7 +61,7 @@ export class FilePlanStore implements PlanStore {
     const entries = await readdir(this.plansDir, { withFileTypes: true });
     const plans: AgentPlan[] = [];
     for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith(".json") || entry.name.startsWith(".")) {
+      if (!entry.isFile() || !/^plan_[A-Za-z0-9]+\.json$/.test(entry.name)) {
         continue;
       }
       const planId = entry.name.slice(0, -5);
@@ -80,6 +79,7 @@ export class FilePlanStore implements PlanStore {
     safePlanId(event.planId);
     const target = path.join(this.auditDir, `${event.planId}.jsonl`);
     await appendFile(target, `${JSON.stringify(event)}\n`, { encoding: "utf8", mode: 0o600 });
+    await chmod(target, 0o600);
   }
 
   public async getAudit(planId: string): Promise<AuditEvent[]> {

@@ -10,6 +10,13 @@ All notable changes to AgentPlan are documented here. The project follows semant
 - GitHub approval adapter with collaborator permission checks, exact plan-hash commands and timeout fail-closed behavior.
 - GitHub capability comments that update in place instead of duplicating PR reports.
 - CLI and GitHub Action support for capability review in pull requests.
+- End-to-end smoke coverage for the compiled CLI, filesystem executor and dashboard API.
+
+### Security and maintenance
+
+- Fixed the high-severity transitive `nanoid` audit finding by refreshing the Vite/PostCSS lockfile chain.
+- Prevented approval replay for terminal plans, hardened local store permissions and rejected dangerous shell environment overrides.
+- Added DNS-resolution checks for HTTP targets, immutable GitHub Action pins and release-version consistency checks.
 
 ## [0.1.0] — 2026-08-04
 
