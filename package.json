@@ -11,6 +11,7 @@
   "scripts": {
     "build": "tsc -b tsconfig.json",
     "build:examples": "node scripts/build-examples.mjs",
+    "pack:check": "pnpm -r pack --dry-run",
     "smoke": "node scripts/smoke.mjs",
     "verify:release": "node scripts/verify-release.mjs",
     "test": "vitest run",
@@ -20,7 +21,7 @@
     "format:check": "node scripts/check-format.mjs",
     "check:docs": "node scripts/check-docs.mjs",
     "check:examples": "pnpm build && pnpm build:examples",
-    "ci": "pnpm format:check && pnpm check:docs && pnpm typecheck && pnpm test && pnpm build && pnpm smoke && pnpm build:examples",
+    "ci": "pnpm format:check && pnpm check:docs && pnpm typecheck && pnpm test && pnpm build && pnpm smoke && pnpm build:examples && pnpm pack:check",
     "agentplan": "node apps/cli/dist/index.js",
     "dashboard": "node apps/dashboard/dist/index.js"
   },
